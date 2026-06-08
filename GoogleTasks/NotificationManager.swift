@@ -107,7 +107,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         guard dueDate > Date() else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "\(title)"
+        content.title = title
         content.body = "Due now — \(listName)"
         content.sound = .default
 

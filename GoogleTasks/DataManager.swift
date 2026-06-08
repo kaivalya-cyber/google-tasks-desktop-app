@@ -266,9 +266,9 @@ final class DataManager: ObservableObject {
 
         do {
             let task = try await apiService.updateTask(taskListId: listId, taskId: taskId, title: title, notes: notes, status: status, due: due)
-            // Cancel old notification and reschedule if due changed
-            notificationManager.cancelTaskNotification(taskId: taskId)
+            // Only touch notifications when due date was explicitly provided
             if let due = due {
+                notificationManager.cancelTaskNotification(taskId: taskId)
                 await notificationManager.scheduleTaskDueNotification(taskId: taskId, dueDate: due, title: task.title, listName: listName)
             }
             await loadTasks()
@@ -504,58 +504,6 @@ final class DataManager: ObservableObject {
     }
 
     // MARK: - Task Reordering
-
-    /// Moves a task up one position within its list
-    func moveTaskUp(taskId: String) async {
-        guard let listId = selectedTaskListId,
-              let tasks = tasksByListId[listId],
-              let index = tasks.firstIndex(where: { $0.id == taskId }),
-              index > 0 else { return }
-
-        let previous: String? = index > 1 ? tasks[index - 2].id : nil
-
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            _ = try await apiService.moveTask(taskListId: listId, taskId: taskId, previous: previous)
-            await loadTasks()
-        } catch {
-            if networkMonitor.isConnected {
-                errorMessage = error.localizedDescription
-            } else {
-                errorMessage = "Cannot reorder tasks while offline"
-            }
-        }
-
-        isLoading = false
-    }
-
-    /// Moves a task down one position within its list
-    func moveTaskDown(taskId: String) async {
-        guard let listId = selectedTaskListId,
-              let tasks = tasksByListId[listId],
-              let index = tasks.firstIndex(where: { $0.id == taskId }),
-              index < tasks.count - 1 else { return }
-
-        let previous = tasks[index + 1].id
-
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            _ = try await apiService.moveTask(taskListId: listId, taskId: taskId, previous: previous)
-            await loadTasks()
-        } catch {
-            if networkMonitor.isConnected {
-                errorMessage = error.localizedDescription
-            } else {
-                errorMessage = "Cannot reorder tasks while offline"
-            }
-        }
-
-        isLoading = false
-    }
 
     /// Moves a task to a different task list
     func moveTaskToList(taskId: String, toListId: String) async {

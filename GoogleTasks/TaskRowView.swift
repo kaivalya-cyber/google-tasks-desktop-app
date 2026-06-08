@@ -99,11 +99,12 @@ struct TaskRowView: View {
                 }
             }
             .onDrag {
-                NSItemProvider(object: task.id as NSString)
+                task.parent == nil ? NSItemProvider(object: task.id as NSString) : NSItemProvider()
             }
             .onDrop(of: [.text], delegate: TaskRowDropDelegate(
                 taskId: task.id,
                 isTarget: $isDropTarget,
+                canDrop: task.parent == nil,
                 moveTask: { draggedId in
                     Task { await dataManager.moveTaskBefore(taskId: draggedId, beforeId: task.id) }
                 }
@@ -664,12 +665,13 @@ private func parseNaturalDate(_ text: String) -> Date? {
 
 struct TaskRowDropDelegate: DropDelegate {
     let taskId: String
+    let canDrop: Bool
     @Binding var isTarget: Bool
     let moveTask: (String) -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
-        // Accept drops from other task rows
-        return info.hasItemsConforming(to: [.text])
+        // Only accept drops on top-level tasks
+        return canDrop && info.hasItemsConforming(to: [.text])
     }
 
     func dropEntered(info: DropInfo) {
