@@ -16,7 +16,7 @@ class KeyablePanel: NSPanel {
     override func keyDown(with event: NSEvent) {
         // Only handle keys without modifiers (except shift for uppercase)
         let modifierFlags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            .subtracting(.shift)
+            .subtracting([.shift, .capsLock])
         if modifierFlags.isEmpty {
             switch event.keyCode {
             case 53: // Escape
