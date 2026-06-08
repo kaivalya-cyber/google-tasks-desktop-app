@@ -7,9 +7,11 @@ struct MenuView: View {
     @State private var showNewTaskForm = false
     @State private var showNewListForm = false
     @State private var searchQuery = ""
-    @State private var selectedTaskId: String? = nil
+    @State private var selectedTaskIds: Set<String> = []
     @State private var showEditSheetForSelected = false
     @State private var detailTask: GoogleTask? = nil
+    @State private var showTodayOnly = false
+    @State private var showBatchMovePicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,7 +58,7 @@ struct MenuView: View {
                 .environmentObject(dataManager)
         }
         .sheet(isPresented: $showEditSheetForSelected) {
-            if let taskId = selectedTaskId,
+            if let taskId = selectedTaskIds.first,
                let task = dataManager.allTasksInSelectedList.first(where: { $0.id == taskId }) {
                 EditTaskFormView(isPresented: $showEditSheetForSelected, task: task)
                     .environmentObject(dataManager)
@@ -75,7 +77,7 @@ struct MenuView: View {
         }
         .onChange(of: dataManager.selectedTaskListId) { _ in
             searchQuery = ""
-            selectedTaskId = nil
+            selectedTaskIds = []
         }
         .onReceive(NotificationCenter.default.publisher(for: AppConstants.Notifications.newTaskShortcut)) { _ in
             if dataManager.authManager.isAuthenticated && dataManager.selectedTaskListId != nil {
@@ -83,14 +85,14 @@ struct MenuView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: AppConstants.Notifications.editSelectedTaskShortcut)) { _ in
-            if selectedTaskId != nil {
+            if !selectedTaskIds.isEmpty {
                 showEditSheetForSelected = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: AppConstants.Notifications.deleteSelectedTaskShortcut)) { _ in
-            if let taskId = selectedTaskId {
-                Task { await dataManager.deleteTask(taskId: taskId) }
-                selectedTaskId = nil
+            if !selectedTaskIds.isEmpty {
+                Task { await dataManager.batchDeleteTasks(taskIds: selectedTaskIds) }
+                selectedTaskIds = []
             }
         }
     }
@@ -146,6 +148,28 @@ struct MenuView: View {
             Spacer()
 
             if dataManager.authManager.isAuthenticated {
+                // Today toggle
+                Button {
+                    showTodayOnly.toggle()
+                    selectedTaskIds = []
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: showTodayOnly ? "calendar.badge.checkmark" : "calendar")
+                            .font(.system(size: 10))
+                        Text("Today")
+                            .font(.system(size: 9, weight: showTodayOnly ? .bold : .regular))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(showTodayOnly ? Color.blue.opacity(0.15) : Color.clear)
+                    )
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(showTodayOnly ? .blue : .secondary)
+                .help("Show only today's tasks across all lists")
+
                 Button {
                     Task { await dataManager.refreshAll() }
                 } label: {
@@ -311,87 +335,10 @@ struct MenuView: View {
 
     private var taskContentView: some View {
         VStack(spacing: 0) {
-            if let selectedList = dataManager.selectedTaskList {
-                HStack {
-                    Text(selectedList.displayTitle)
-                        .font(.system(size: 12, weight: .semibold))
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    // Clear completed button
-                    let completedCount = dataManager.selectedListTasks.filter { $0.isCompleted }.count
-                    if completedCount > 0 {
-                        Button {
-                            Task { await dataManager.clearCompletedTasks() }
-                        } label: {
-                            Text("Clear \(completedCount) done")
-                                .font(.system(size: 9))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundColor(.secondary)
-                        .help("Remove all completed tasks")
-                    }
-
-                    Text("\(dataManager.selectedListTasks.count)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Search bar
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    TextField("Search tasks...", text: $searchQuery)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-
-                Divider()
-
-                if dataManager.selectedListTasks.isEmpty {
-                    VStack {
-                        Spacer()
-                        Text("No tasks yet")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                        Button {
-                            showNewTaskForm = true
-                        } label: {
-                            Text("Add a task")
-                                .font(.system(size: 11))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundColor(.blue)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
-                } else if !searchQuery.isEmpty && filteredTasks.isEmpty {
-                    VStack {
-                        Spacer()
-                        Text("No tasks match \"\(searchQuery)\"")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredTasks) { task in
-                                TaskRowView(task: task, selectedTaskId: $selectedTaskId, onDoubleClick: { detailTask = $0 })
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
+            if showTodayOnly {
+                todayTaskView
+            } else if let selectedList = dataManager.selectedTaskList {
+                listTaskView(selectedList: selectedList)
             } else {
                 VStack {
                     Spacer()
@@ -404,11 +351,171 @@ struct MenuView: View {
         }
     }
 
+    // MARK: - Today View
+
+    private var todayTaskView: some View {
+        let todayTasks = dataManager.allTasksDueToday
+
+        return VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "calendar")
+                    .font(.system(size: 11))
+                    .foregroundColor(.blue)
+                Text("Today")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text("\(todayTasks.count)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            if todayTasks.isEmpty {
+                VStack {
+                    Spacer()
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 28))
+                        .foregroundColor(.green.opacity(0.5))
+                    Text("All caught up!")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(todayTasks) { task in
+                            TaskRowView(task: task, selectedTaskIds: $selectedTaskIds, onDoubleClick: { detailTask = $0 })
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+
+    // MARK: - List Task View
+
+    @ViewBuilder
+    private func listTaskView(selectedList: TaskList) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(selectedList.displayTitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+
+                Spacer()
+
+                // Clear completed button
+                let completedCount = dataManager.selectedListTasks.filter { $0.isCompleted }.count
+                if completedCount > 0 {
+                    Button {
+                        Task { await dataManager.clearCompletedTasks() }
+                    } label: {
+                        Text("Clear \(completedCount) done")
+                            .font(.system(size: 9))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .help("Remove all completed tasks")
+                }
+
+                Text("\(dataManager.selectedListTasks.count)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            // Search bar
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.5))
+                TextField("Search tasks...", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+
+            Divider()
+
+            if dataManager.selectedListTasks.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("No tasks yet")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else if !searchQuery.isEmpty && filteredTasks.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("No tasks match \"\(searchQuery)\"")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredTasks) { task in
+                            TaskRowView(task: task, selectedTaskIds: $selectedTaskIds, onDoubleClick: { detailTask = $0 })
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
         HStack {
-            if dataManager.authManager.isAuthenticated && dataManager.selectedTaskListId != nil {
+            if !selectedTaskIds.isEmpty {
+                // Multi-select toolbar
+                Button {
+                    Task {
+                        await dataManager.batchDeleteTasks(taskIds: selectedTaskIds)
+                        selectedTaskIds = []
+                    }
+                } label: {
+                    Label("Delete \(selectedTaskIds.count)", systemImage: "trash")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.red)
+
+                if dataManager.taskLists.count > 1 {
+                    Button {
+                        showBatchMovePicker = true
+                    } label: {
+                        Label("Move \(selectedTaskIds.count)", systemImage: "arrow.right.to.line")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.blue)
+                }
+
+                Button {
+                    selectedTaskIds = []
+                } label: {
+                    Text("Cancel")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+            } else if dataManager.authManager.isAuthenticated && dataManager.selectedTaskListId != nil {
                 Button {
                     showNewTaskForm = true
                 } label: {
@@ -438,7 +545,25 @@ struct MenuView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-    }
+        .popover(isPresented: $showBatchMovePicker) {
+            VStack(spacing: 12) {
+                Text("Move \(selectedTaskIds.count) tasks to:")
+                    .font(.system(size: 12, weight: .medium))
+                List(dataManager.taskLists.filter { $0.id != dataManager.selectedTaskListId }) { list in
+                    Button(list.displayTitle) {
+                        Task {
+                            await dataManager.batchMoveTasks(taskIds: selectedTaskIds, toListId: list.id)
+                            selectedTaskIds = []
+                            showBatchMovePicker = false
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(height: 150)
+            }
+            .padding()
+            .frame(width: 200)
+        }
 
     private func openSettings() {
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)

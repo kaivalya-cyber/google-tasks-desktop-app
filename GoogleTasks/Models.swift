@@ -1,5 +1,33 @@
 import Foundation
 
+// MARK: - Task Priority
+
+enum TaskPriority: String, CaseIterable {
+    case none = ""
+    case low = "!"
+    case medium = "!!"
+    case high = "!!!"
+
+    var prefix: String { rawValue.isEmpty ? "" : "\(rawValue) " }
+    var label: String {
+        switch self {
+        case .none: return "None"
+        case .low: return "! Low"
+        case .medium: return "!! Medium"
+        case .high: return "!!! High"
+        }
+    }
+
+    var color: String {
+        switch self {
+        case .none: return "secondary"
+        case .low: return "blue"
+        case .medium: return "orange"
+        case .high: return "red"
+        }
+    }
+}
+
 // MARK: - Task List
 
 struct TaskList: Identifiable, Codable, Equatable, Hashable {
@@ -140,6 +168,22 @@ struct GoogleTask: Identifiable, Codable, Equatable {
     var isOverdue: Bool {
         guard let dueDate = dueDate else { return false }
         return !isCompleted && dueDate < Date()
+    }
+
+    /// Strips priority prefix (!, !!, !!!) from the title for display
+    var displayTitle: String {
+        if title.hasPrefix("!!! ") { return String(title.dropFirst(4)) }
+        if title.hasPrefix("!! ") { return String(title.dropFirst(3)) }
+        if title.hasPrefix("! ") { return String(title.dropFirst(2)) }
+        return title
+    }
+
+    /// Parsed priority level from title prefix convention
+    var priority: TaskPriority {
+        if title.hasPrefix("!!! ") || title.hasPrefix("!!!") { return .high }
+        if title.hasPrefix("!! ") || title.hasPrefix("!!") && !title.hasPrefix("!!!") { return .medium }
+        if title.hasPrefix("! ") || title.hasPrefix("!") && !title.hasPrefix("!!") { return .low }
+        return .none
     }
 
     /// Returns a copy with specified fields replaced. Used for optimistic local updates.

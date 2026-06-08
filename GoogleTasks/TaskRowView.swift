@@ -4,14 +4,14 @@ import SwiftUI
 
 struct TaskRowView: View {
     let task: GoogleTask
-    @Binding var selectedTaskId: String?
+    @Binding var selectedTaskIds: Set<String>
     var onDoubleClick: ((GoogleTask) -> Void)? = nil
     @EnvironmentObject var dataManager: DataManager
     @State private var isHovering = false
     @State private var showEditSheet = false
 
     private var isSelected: Bool {
-        selectedTaskId == task.id
+        selectedTaskIds.contains(task.id)
     }
 
     var body: some View {
@@ -27,11 +27,18 @@ struct TaskRowView: View {
                 .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(task.title)
-                        .font(.system(size: 12, weight: .medium))
-                        .strikethrough(task.isCompleted, color: .secondary)
-                        .foregroundColor(task.isCompleted ? .secondary : .primary)
-                        .lineLimit(2)
+                    HStack(spacing: 3) {
+                        if task.priority != .none {
+                            Circle()
+                                .fill(priorityColor(task.priority))
+                                .frame(width: 5, height: 5)
+                        }
+                        Text(task.displayTitle)
+                            .font(.system(size: 12, weight: .medium))
+                            .strikethrough(task.isCompleted, color: .secondary)
+                            .foregroundColor(task.isCompleted ? .secondary : .primary)
+                            .lineLimit(2)
+                    }
 
                     if let notes = task.notes, !notes.isEmpty {
                         Text(notes)
@@ -113,7 +120,15 @@ struct TaskRowView: View {
                 }
             }
             .onTapGesture {
-                selectedTaskId = task.id
+                if let event = NSApp.currentEvent, event.modifierFlags.contains(.command) {
+                    if selectedTaskIds.contains(task.id) {
+                        selectedTaskIds.remove(task.id)
+                    } else {
+                        selectedTaskIds.insert(task.id)
+                    }
+                } else {
+                    selectedTaskIds = [task.id]
+                }
             }
             .background(
                 isSelected ? Color.blue.opacity(0.08)
@@ -128,7 +143,7 @@ struct TaskRowView: View {
             if let subtasks = task.subtasks, !subtasks.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(subtasks) { subtask in
-                        TaskRowView(task: subtask, selectedTaskId: $selectedTaskId, onDoubleClick: onDoubleClick)
+                        TaskRowView(task: subtask, selectedTaskIds: $selectedTaskIds, onDoubleClick: onDoubleClick)
                             .padding(.leading, 20)
                     }
                 }
@@ -142,6 +157,15 @@ struct TaskRowView: View {
                 onDoubleClick?(task)
             }
         )
+    }
+
+    private func priorityColor(_ priority: TaskPriority) -> Color {
+        switch priority {
+        case .high: return .red
+        case .medium: return .orange
+        case .low: return .blue
+        case .none: return .secondary
+        }
     }
 
     private func formatDueDate(_ date: Date) -> String {
@@ -170,14 +194,33 @@ struct NewTaskFormView: View {
     @State private var hasDueDate = false
     @State private var dueDate = Date()
     @State private var parentTaskId: String? = nil
+    @State private var priority: TaskPriority = .none
 
     var body: some View {
         VStack(spacing: 16) {
             Text("New Task")
                 .font(.headline)
 
-            TextField("Task title", text: $title)
-                .textFieldStyle(.roundedBorder)
+            HStack(spacing: 8) {
+                TextField("Task title", text: $title)
+                    .textFieldStyle(.roundedBorder)
+
+                Picker("Priority", selection: $priority) {
+                    ForEach(TaskPriority.allCases, id: \.self) { p in
+                        HStack(spacing: 3) {
+                            if p != .none {
+                                Circle()
+                                    .fill(p.color == "blue" ? .blue : p.color == "orange" ? .orange : .red)
+                                    .frame(width: 6, height: 6)
+                            }
+                            Text(p.label)
+                        }
+                        .tag(p)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 90)
+            }
 
             TextEditor(text: $notes)
                 .font(.system(size: 12))
@@ -228,7 +271,7 @@ struct NewTaskFormView: View {
                 Button("Create") {
                     Task {
                         _ = await dataManager.createTask(
-                            title: title,
+                            title: priority.prefix + title,
                             notes: notes.isEmpty ? nil : notes,
                             due: hasDueDate ? dueDate : nil,
                             parent: parentTaskId
@@ -531,7 +574,7 @@ struct TaskDetailPopover: View {
             deleted: nil,
             hidden: nil
         ),
-        selectedTaskId: .constant(nil)
+        selectedTaskIds: .constant([])
     )
     .environmentObject(DataManager.shared)
     .frame(width: 300)

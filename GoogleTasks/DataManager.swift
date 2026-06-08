@@ -664,6 +664,73 @@ final class DataManager: ObservableObject {
         return taskLists.first { $0.id == listId }
     }
 
+    /// Returns all incomplete tasks due today or overdue, across all lists (flattened)
+    var allTasksDueToday: [GoogleTask] {
+        var result: [GoogleTask] = []
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        for (_, tasks) in tasksByListId {
+            for task in tasks {
+                collectDueToday(task, today: today, into: &result)
+            }
+        }
+        return result.sorted { ($0.due ?? "") < ($1.due ?? "") }
+    }
+
+    private func collectDueToday(_ task: GoogleTask, today: Date, into result: inout [GoogleTask]) {
+        if !task.isCompleted, let dueDate = task.dueDate {
+            let dueDay = Calendar.current.startOfDay(for: dueDate)
+            if dueDay <= today {
+                result.append(task)
+            }
+        }
+        if let subtasks = task.subtasks {
+            for subtask in subtasks {
+                collectDueToday(subtask, today: today, into: &result)
+            }
+        }
+    }
+
+    /// Batch-deletes multiple tasks
+    func batchDeleteTasks(taskIds: Set<String>) async {
+        guard let listId = selectedTaskListId else { return }
+        isLoading = true
+        errorMessage = nil
+        var failed = 0
+        for taskId in taskIds {
+            do {
+                try await apiService.deleteTask(taskListId: listId, taskId: taskId)
+            } catch {
+                failed += 1
+            }
+        }
+        await loadTasks()
+        if failed > 0 { errorMessage = "\(failed) deletion(s) failed" }
+        isLoading = false
+    }
+
+    /// Batch-moves multiple tasks to another list
+    func batchMoveTasks(taskIds: Set<String>, toListId: String) async {
+        guard let fromListId = selectedTaskListId, fromListId != toListId else { return }
+        isLoading = true
+        errorMessage = nil
+        var failed = 0
+        for taskId in taskIds {
+            do {
+                _ = try await apiService.moveTask(
+                    taskListId: fromListId, taskId: taskId,
+                    destinationTaskListId: toListId
+                )
+            } catch {
+                failed += 1
+            }
+        }
+        await loadTasks(for: fromListId)
+        await loadTasks(for: toListId)
+        if failed > 0 { errorMessage = "\(failed) move(s) failed" }
+        isLoading = false
+    }
+
     /// Signs in to Google. Loads cached data first, then refreshes from API.
     func signIn() async {
         isLoading = true
