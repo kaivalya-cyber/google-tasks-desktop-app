@@ -1,6 +1,7 @@
 import Foundation
 import AuthenticationServices
 import Security
+import CryptoKit
 
 // MARK: - Auth Error
 
@@ -488,10 +489,6 @@ struct KeychainHelper {
         }
     }
 }
-
-// MARK: - SHA256 (PKCE)
-
-import CryptoKit
 
 extension Data {
     func base64URLEncodedString() -> String {
