@@ -6,6 +6,7 @@ struct MenuView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var showNewTaskForm = false
     @State private var showNewListForm = false
+    @State private var searchQuery = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,7 +42,7 @@ struct MenuView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
         )
         .sheet(isPresented: $showNewTaskForm) {
             NewTaskFormView(isPresented: $showNewTaskForm)
@@ -265,6 +266,13 @@ struct MenuView: View {
         }
     }
 
+    /// Filtered tasks for search
+    private var filteredTasks: [GoogleTask] {
+        let tasks = dataManager.selectedListTasks
+        guard !searchQuery.isEmpty else { return tasks }
+        return tasks.filter { $0.title.localizedCaseInsensitiveContains(searchQuery) }
+    }
+
     // MARK: - Task Content
 
     private var taskContentView: some View {
@@ -286,6 +294,20 @@ struct MenuView: View {
 
                 Divider()
 
+                // Search bar
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    TextField("Search tasks...", text: $searchQuery)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+
+                Divider()
+
                 if dataManager.selectedListTasks.isEmpty {
                     VStack {
                         Spacer()
@@ -303,10 +325,19 @@ struct MenuView: View {
                         Spacer()
                     }
                     .frame(maxWidth: .infinity)
+                } else if !searchQuery.isEmpty && filteredTasks.isEmpty {
+                    VStack {
+                        Spacer()
+                        Text("No tasks match \"\(searchQuery)\"")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(dataManager.selectedListTasks) { task in
+                            ForEach(filteredTasks) { task in
                                 TaskRowView(task: task)
                             }
                         }

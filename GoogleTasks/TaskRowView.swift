@@ -130,6 +130,7 @@ struct NewTaskFormView: View {
     @State private var notes = ""
     @State private var hasDueDate = false
     @State private var dueDate = Date()
+    @State private var parentTaskId: String? = nil
 
     var body: some View {
         VStack(spacing: 16) {
@@ -164,6 +165,19 @@ struct NewTaskFormView: View {
                     .datePickerStyle(.compact)
             }
 
+            // Parent task picker for subtask creation
+            let availableParents = dataManager.allTasksInSelectedList.filter { $0.id != parentTaskId }
+            if !availableParents.isEmpty {
+                Picker("Parent task", selection: $parentTaskId) {
+                    Text("None (top-level)").tag(nil as String?)
+                    ForEach(availableParents) { task in
+                        Text(task.title).tag(task.id as String?)
+                    }
+                }
+                .pickerStyle(.menu)
+                .font(.system(size: 12))
+            }
+
             HStack {
                 Button("Cancel") {
                     isPresented = false
@@ -177,7 +191,8 @@ struct NewTaskFormView: View {
                         _ = await dataManager.createTask(
                             title: title,
                             notes: notes.isEmpty ? nil : notes,
-                            due: hasDueDate ? dueDate : nil
+                            due: hasDueDate ? dueDate : nil,
+                            parent: parentTaskId
                         )
                         isPresented = false
                     }

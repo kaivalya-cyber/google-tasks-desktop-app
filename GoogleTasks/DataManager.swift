@@ -536,6 +536,24 @@ final class DataManager: ObservableObject {
         return tasksByListId[listId] ?? []
     }
 
+    /// Returns all tasks (including nested subtasks) for the selected list, flattened
+    var allTasksInSelectedList: [GoogleTask] {
+        var result: [GoogleTask] = []
+        for task in selectedListTasks {
+            collectTasks(task, into: &result)
+        }
+        return result
+    }
+
+    private func collectTasks(_ task: GoogleTask, into result: inout [GoogleTask]) {
+        result.append(task)
+        if let subtasks = task.subtasks {
+            for subtask in subtasks {
+                collectTasks(subtask, into: &result)
+            }
+        }
+    }
+
     /// Returns the currently selected task list
     var selectedTaskList: TaskList? {
         guard let listId = selectedTaskListId else { return nil }
