@@ -52,5 +52,6 @@ enum AppConstants {
         static let tasksDidUpdate = Notification.Name("tasksDidUpdate")
         static let taskListsDidUpdate = Notification.Name("taskListsDidUpdate")
         static let closeMenuBarPanel = Notification.Name("closeMenuBarPanel")
+        static let connectivityChanged = Notification.Name("connectivityChanged")
     }
 }

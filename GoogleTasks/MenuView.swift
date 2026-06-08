@@ -71,6 +71,25 @@ struct MenuView: View {
             Text("Google Tasks")
                 .font(.system(size: 14, weight: .semibold))
 
+            // Offline / pending indicator
+            if dataManager.authManager.isAuthenticated && dataManager.isOffline {
+                HStack(spacing: 4) {
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 9))
+                    if dataManager.pendingMutations > 0 {
+                        Text("\(dataManager.pendingMutations)")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                }
+                .foregroundColor(.orange)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.orange.opacity(0.1))
+                )
+            }
+
             Spacer()
 
             if dataManager.authManager.isAuthenticated {

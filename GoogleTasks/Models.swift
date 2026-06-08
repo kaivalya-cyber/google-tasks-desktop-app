@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 // MARK: - Task List
 
@@ -141,6 +140,30 @@ struct GoogleTask: Identifiable, Codable, Equatable {
     var isOverdue: Bool {
         guard let dueDate = dueDate else { return false }
         return !isCompleted && dueDate < Date()
+    }
+
+    /// Returns a copy with specified fields replaced. Used for optimistic local updates.
+    func with(
+        title: String? = nil,
+        notes: String?? = nil,
+        status: String? = nil,
+        due: String?? = nil,
+        completed: String?? = nil
+    ) -> GoogleTask {
+        GoogleTask(
+            id: id,
+            title: title ?? self.title,
+            updated: nil,
+            selfLink: selfLink,
+            parent: parent,
+            position: position,
+            notes: notes ?? self.notes,
+            status: status ?? self.status,
+            due: due ?? self.due,
+            completed: completed ?? self.completed,
+            deleted: deleted,
+            hidden: hidden
+        )
     }
 }
 
