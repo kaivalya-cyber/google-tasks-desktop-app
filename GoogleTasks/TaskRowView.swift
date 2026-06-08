@@ -159,58 +159,6 @@ struct TaskRowView: View {
         )
     }
 
-    private func parseNaturalDate(_ text: String) -> Date? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !trimmed.isEmpty else { return nil }
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-
-        switch trimmed {
-        case "today": return today
-        case "tomorrow": return calendar.date(byAdding: .day, value: 1, to: today)
-        case "yesterday": return calendar.date(byAdding: .day, value: -1, to: today)
-        case "next week": return calendar.date(byAdding: .day, value: 7, to: today)
-        default: break
-        }
-
-        // "next monday", "next tuesday", etc.
-        let weekdays: [String: Int] = [
-            "sunday": 1, "monday": 2, "tuesday": 3, "wednesday": 4,
-            "thursday": 5, "friday": 6, "saturday": 7
-        ]
-        for (name, target) in weekdays {
-            if trimmed == "next \(name)" {
-                let current = calendar.component(.weekday, from: today)
-                var days = target - current
-                if days <= 0 { days += 7 }
-                return calendar.date(byAdding: .day, value: days, to: today)
-            }
-            if trimmed == name {
-                let current = calendar.component(.weekday, from: today)
-                var days = target - current
-                if days < 0 { days += 7 }
-                if days == 0 { return today }
-                return calendar.date(byAdding: .day, value: days, to: today)
-            }
-        }
-
-        // "in X days/weeks"
-        if trimmed.hasPrefix("in ") {
-            let rest = String(trimmed.dropFirst(3))
-            let parts = rest.components(separatedBy: " ")
-            if parts.count >= 2, let num = Int(parts[0]) {
-                if parts[1].hasPrefix("day") {
-                    return calendar.date(byAdding: .day, value: num, to: today)
-                }
-                if parts[1].hasPrefix("week") {
-                    return calendar.date(byAdding: .day, value: num * 7, to: today)
-                }
-            }
-        }
-
-        return nil
-    }
-
     private func formatDueDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         if Calendar.current.isDateInToday(date) {
@@ -610,6 +558,58 @@ struct TaskDetailPopover: View {
             return formatter.string(from: date)
         }
     }
+}
+
+// MARK: - Natural Date Parsing (file-level, shared)
+
+private func parseNaturalDate(_ text: String) -> Date? {
+    let trimmed = text.trimmingCharacters(in: .whitespaces).lowercased()
+    guard !trimmed.isEmpty else { return nil }
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+
+    switch trimmed {
+    case "today": return today
+    case "tomorrow": return calendar.date(byAdding: .day, value: 1, to: today)
+    case "yesterday": return calendar.date(byAdding: .day, value: -1, to: today)
+    case "next week": return calendar.date(byAdding: .day, value: 7, to: today)
+    default: break
+    }
+
+    let weekdays: [String: Int] = [
+        "sunday": 1, "monday": 2, "tuesday": 3, "wednesday": 4,
+        "thursday": 5, "friday": 6, "saturday": 7
+    ]
+    for (name, target) in weekdays {
+        if trimmed == "next \(name)" {
+            let current = calendar.component(.weekday, from: today)
+            var days = target - current
+            if days <= 0 { days += 7 }
+            return calendar.date(byAdding: .day, value: days, to: today)
+        }
+        if trimmed == name {
+            let current = calendar.component(.weekday, from: today)
+            var days = target - current
+            if days < 0 { days += 7 }
+            if days == 0 { return today }
+            return calendar.date(byAdding: .day, value: days, to: today)
+        }
+    }
+
+    if trimmed.hasPrefix("in ") {
+        let rest = String(trimmed.dropFirst(3))
+        let parts = rest.components(separatedBy: " ")
+        if parts.count >= 2, let num = Int(parts[0]) {
+            if parts[1].hasPrefix("day") {
+                return calendar.date(byAdding: .day, value: num, to: today)
+            }
+            if parts[1].hasPrefix("week") {
+                return calendar.date(byAdding: .day, value: num * 7, to: today)
+            }
+        }
+    }
+
+    return nil
 }
 
 // MARK: - Preview
