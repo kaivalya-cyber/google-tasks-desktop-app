@@ -22,7 +22,8 @@ A native macOS menu bar application for managing Google Tasks. Built with Swift 
 - **Keychain Storage** — Encrypted token storage via macOS Keychain
 - **Offline Support** — Local JSON cache with mutation queue for offline use
 - **Auto-Sync** — Offline changes auto-replay when connectivity returns
-- **Zero Dependencies** — Pure Swift/SwiftUI, no external packages
+- **Zero Dependencies** — Pure Swift/SwiftUI, one external package (HotKey for shortcuts)
+- **Due Date Notifications** — Local notification at 9 AM when tasks are due today or overdue
 
 ## Requirements
 
@@ -192,6 +193,7 @@ google-tasks-desktop-app/
 │   ├── AuthManager.swift           # OAuth2 PKCE, Keychain token storage, refresh + continuation queue
 │   ├── APIService.swift            # Google Tasks REST API v1 client (full CRUD)
 │   ├── LocalCache.swift            # JSON file-based snapshot cache + offline mutation queue + NWPathMonitor
+│   ├── NotificationManager.swift   # UNUserNotificationCenter — due date alerts at 9 AM
 │   ├── Models.swift                # TaskList, GoogleTask, API responses, Date extensions, with() helper
 │   ├── AppConstants.swift          # OAuth, API URLs, Keychain keys, layout dimensions, notification names
 │   ├── MenuView.swift              # Main floating panel UI (sidebar, task list, sign-in flow, offline badge)

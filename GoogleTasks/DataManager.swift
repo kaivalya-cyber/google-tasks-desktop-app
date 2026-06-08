@@ -28,6 +28,7 @@ final class DataManager: ObservableObject {
     private let apiService = GoogleTasksAPIService.shared
     private let cache = LocalCache.shared
     private let networkMonitor = NetworkMonitor.shared
+    private let notificationManager = NotificationManager.shared
     private var refreshTimer: Timer?
     private var isReplayingMutations: Bool = false
     private var cancellables = Set<AnyCancellable>()
@@ -83,6 +84,7 @@ final class DataManager: ObservableObject {
 
             saveToCache()
             NotificationCenter.default.post(name: AppConstants.Notifications.taskListsDidUpdate, object: nil)
+            await scheduleNotificationsIfNeeded()
         } catch {
             // Fall back to cache if offline
             if networkMonitor.isConnected == false && cache.hasCachedSnapshot {
@@ -184,6 +186,8 @@ final class DataManager: ObservableObject {
 
         pendingMutations = cache.pendingMutationCount
         isLoading = false
+
+        await scheduleNotificationsIfNeeded()
     }
 
     /// Creates a new task, queuing the mutation if offline
@@ -588,6 +592,16 @@ final class DataManager: ObservableObject {
         refreshTimer = nil
     }
 
+    // MARK: - Notifications
+
+    /// Schedules local notifications for tasks due today after a data refresh
+    private func scheduleNotificationsIfNeeded() async {
+        await notificationManager.scheduleDueDateNotifications(
+            taskLists: taskLists,
+            tasksByListId: tasksByListId
+        )
+    }
+
     // MARK: - Private
 
     private func setupNotificationObservers() {
@@ -595,6 +609,7 @@ final class DataManager: ObservableObject {
         NotificationCenter.default.publisher(for: AppConstants.Notifications.didSignIn)
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
+                    await self?.notificationManager.requestAuthorization()
                     await self?.refreshAll()
                     self?.startAutoRefresh()
                 }
