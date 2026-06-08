@@ -327,11 +327,7 @@ final class DataManager: ObservableObject {
                 // Optimistically toggle local state
                 if var tasks = tasksByListId[listId],
                    let index = tasks.firstIndex(where: { $0.id == task.id }) {
-                    let completionString = newStatus == "completed" ? ISO8601DateFormatter().string(from: Date()) : nil
-                    tasks[index] = tasks[index].with(
-                        status: newStatus,
-                        completed: completionString
-                    )
+                    let completionString = newStatus == "completed" ? ISO8601DateFormatter().string(from: Date()) : nil                    tasks[index] = tasks[index].with(status: newStatus, completed: .some(completionString))
                     tasksByListId[listId] = tasks
                     saveToCache()
                 }
