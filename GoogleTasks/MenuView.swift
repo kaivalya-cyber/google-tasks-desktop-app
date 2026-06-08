@@ -90,6 +90,24 @@ struct MenuView: View {
                 )
             }
 
+            // Sync indicator (replaying mutations after reconnection)
+            if dataManager.authManager.isAuthenticated && dataManager.isSyncing {
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                        .frame(width: 10, height: 10)
+                    Text("Syncing")
+                        .font(.system(size: 9, weight: .medium))
+                }
+                .foregroundColor(.blue)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.blue.opacity(0.1))
+                )
+            }
+
             Spacer()
 
             if dataManager.authManager.isAuthenticated {

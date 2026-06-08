@@ -93,56 +93,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleMenuBarPanelViaHotkey() {
-        // If panel is already open, close it. Otherwise open it (positioned at center of screen
-        // since we don't have a status bar button context from the hotkey).
         if isMenuBarPanelOpen {
             closeMenuBarPanel()
         } else {
-            showMenuBarPanelFromHotkey()
-        }
-    }
-
-    private func showMenuBarPanelFromHotkey() {
-        let isFirstShow = menuBarPanel == nil
-
-        if menuBarPanel == nil {
-            createMenuBarPanel()
-        }
-
-        guard let panel = menuBarPanel, let screen = NSScreen.main else { return }
-
-        // Center the panel on screen
-        let panelX = screen.visibleFrame.midX - AppConstants.MenuBar.width / 2
-        let panelY = screen.visibleFrame.midY - AppConstants.MenuBar.height / 2
-        panel.setFrame(
-            NSRect(x: panelX, y: panelY, width: AppConstants.MenuBar.width, height: AppConstants.MenuBar.height),
-            display: false
-        )
-
-        isMenuBarPanelOpen = true
-
-        if isFirstShow {
-            panel.alphaValue = 0
-            panel.orderFront(nil)
-            DispatchQueue.main.async { [weak panel] in
-                panel?.alphaValue = 1
-                panel?.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        } else {
-            panel.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-        }
-
-        if menuBarClickMonitor == nil {
-            menuBarClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-                guard let self = self, let panel = self.menuBarPanel, panel.isVisible else { return }
-                if !panel.frame.contains(event.locationInWindow) {
-                    DispatchQueue.main.async {
-                        self.closeMenuBarPanel()
-                    }
-                }
-            }
+            // Position under the status bar — same as the menu bar click path
+            guard let button = statusItem.button else { return }
+            showMenuBarPanel(relativeTo: button)
         }
     }
 

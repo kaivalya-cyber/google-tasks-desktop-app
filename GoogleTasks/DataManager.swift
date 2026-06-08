@@ -21,6 +21,7 @@ final class DataManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var isOffline: Bool = false
     @Published var pendingMutations: Int = 0
+    @Published var isSyncing: Bool = false
 
     // Auth is managed by AuthManager
     var authManager: AuthManager { AuthManager.shared }
@@ -470,6 +471,7 @@ final class DataManager: ObservableObject {
     func replayPendingMutations() async {
         guard !isReplayingMutations else { return }
         isReplayingMutations = true
+        isSyncing = true
 
         let mutations = cache.loadMutationQueue()
 
@@ -486,6 +488,7 @@ final class DataManager: ObservableObject {
         // Refresh state after replay
         await refreshAll()
         pendingMutations = cache.pendingMutationCount
+        isSyncing = false
         isReplayingMutations = false
     }
 
