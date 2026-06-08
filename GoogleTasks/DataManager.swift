@@ -276,9 +276,14 @@ final class DataManager: ObservableObject {
                 // Optimistically update local state
                 if var tasks = tasksByListId[listId],
                    let index = tasks.firstIndex(where: { $0.id == taskId }) {
-                    var task = tasks[index]
-                    if let title = title { task = GoogleTask(id: task.id, title: title, updated: nil, selfLink: task.selfLink, parent: task.parent, position: task.position, notes: notes ?? task.notes, status: status ?? task.status, due: due?.googleDateString ?? task.due, completed: status == "completed" ? ISO8601DateFormatter().string(from: Date()) : task.completed, deleted: task.deleted, hidden: task.hidden) }
-                    tasks[index] = task
+                    let completionString = status == "completed" ? ISO8601DateFormatter().string(from: Date()) : nil
+                    tasks[index] = tasks[index].with(
+                        title: title,
+                        notes: notes,
+                        status: status,
+                        due: due?.googleDateString,
+                        completed: status == "completed" ? completionString : nil
+                    )
                     tasksByListId[listId] = tasks
                     saveToCache()
                 }
@@ -322,9 +327,11 @@ final class DataManager: ObservableObject {
                 // Optimistically toggle local state
                 if var tasks = tasksByListId[listId],
                    let index = tasks.firstIndex(where: { $0.id == task.id }) {
-                    var updated = tasks[index]
-                    updated = GoogleTask(id: updated.id, title: updated.title, updated: nil, selfLink: updated.selfLink, parent: updated.parent, position: updated.position, notes: updated.notes, status: newStatus, due: updated.due, completed: newStatus == "completed" ? ISO8601DateFormatter().string(from: Date()) : nil, deleted: updated.deleted, hidden: updated.hidden)
-                    tasks[index] = updated
+                    let completionString = newStatus == "completed" ? ISO8601DateFormatter().string(from: Date()) : nil
+                    tasks[index] = tasks[index].with(
+                        status: newStatus,
+                        completed: completionString
+                    )
                     tasksByListId[listId] = tasks
                     saveToCache()
                 }
