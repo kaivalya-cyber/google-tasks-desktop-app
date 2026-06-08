@@ -119,20 +119,17 @@ struct TaskRowView: View {
                     isHovering = hovering
                 }
             }
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onEnded { _ in
-                        if let event = NSApp.currentEvent, event.modifierFlags.contains(.command) {
-                            if selectedTaskIds.contains(task.id) {
-                                selectedTaskIds.remove(task.id)
-                            } else {
-                                selectedTaskIds.insert(task.id)
-                            }
-                        } else {
-                            selectedTaskIds = [task.id]
-                        }
+            .onTapGesture {
+                if let event = NSApp.currentEvent, event.modifierFlags.contains(.command) {
+                    if selectedTaskIds.contains(task.id) {
+                        selectedTaskIds.remove(task.id)
+                    } else {
+                        selectedTaskIds.insert(task.id)
                     }
-            )
+                } else {
+                    selectedTaskIds = [task.id]
+                }
+            }
             .background(
                 isSelected ? Color.blue.opacity(0.08)
                     : isHovering ? Color.primary.opacity(0.04)
