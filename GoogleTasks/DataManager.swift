@@ -91,6 +91,7 @@ final class DataManager: ObservableObject {
                 _ = loadFromCache()
                 isOffline = true
                 errorMessage = "You're offline — showing cached data"
+                await scheduleNotificationsIfNeeded()
             } else {
                 errorMessage = error.localizedDescription
             }
