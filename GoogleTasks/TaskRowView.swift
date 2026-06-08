@@ -184,9 +184,29 @@ struct NewTaskFormView: View {
     @State private var notes = ""
     @State private var hasDueDate = false
     @State private var dueDate = Date()
+    @State private var hasDueTime = false
+    @State private var dueTime = Date()
     @State private var parentTaskId: String? = nil
     @State private var priority: TaskPriority = .none
     @State private var naturalDateText = ""
+
+    /// Combines date and optional time into a single Date
+    private var combinedDueDate: Date? {
+        guard hasDueDate else { return nil }
+        if hasDueTime {
+            let cal = Calendar.current
+            let dateOnly = cal.dateComponents([.year, .month, .day], from: dueDate)
+            let timeOnly = cal.dateComponents([.hour, .minute], from: dueTime)
+            var combined = DateComponents()
+            combined.year = dateOnly.year
+            combined.month = dateOnly.month
+            combined.day = dateOnly.day
+            combined.hour = timeOnly.hour
+            combined.minute = timeOnly.minute
+            return cal.date(from: combined)
+        }
+        return dueDate
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -249,6 +269,13 @@ struct NewTaskFormView: View {
                         .datePickerStyle(.field)
                         .labelsHidden()
                 }
+
+                Toggle("Set due time", isOn: $hasDueTime)
+
+                if hasDueTime {
+                    DatePicker("Time", selection: $dueTime, displayedComponents: .hourAndMinute)
+                        .datePickerStyle(.compact)
+                }
             }
 
             // Parent task picker for subtask creation
@@ -277,7 +304,7 @@ struct NewTaskFormView: View {
                         _ = await dataManager.createTask(
                             title: priority.prefix + title,
                             notes: notes.isEmpty ? nil : notes,
-                            due: hasDueDate ? dueDate : nil,
+                            due: combinedDueDate,
                             parent: parentTaskId
                         )
                         isPresented = false
@@ -304,6 +331,8 @@ struct EditTaskFormView: View {
     @State private var notes: String
     @State private var hasDueDate: Bool
     @State private var dueDate: Date
+    @State private var hasDueTime: Bool
+    @State private var dueTime: Date
     @State private var moveToListId: String? = nil
 
     init(isPresented: Binding<Bool>, task: GoogleTask) {
@@ -311,8 +340,30 @@ struct EditTaskFormView: View {
         self.task = task
         self._title = State(initialValue: task.title)
         self._notes = State(initialValue: task.notes ?? "")
-        self._hasDueDate = State(initialValue: task.dueDate != nil)
+        let hasDate = task.dueDate != nil
+        self._hasDueDate = State(initialValue: hasDate)
         self._dueDate = State(initialValue: task.dueDate ?? Date())
+        let cal = Calendar.current
+        let hasTime = hasDate && (cal.component(.hour, from: task.dueDate ?? Date()) != 0 || cal.component(.minute, from: task.dueDate ?? Date()) != 0)
+        self._hasDueTime = State(initialValue: hasTime)
+        self._dueTime = State(initialValue: task.dueDate ?? Date())
+    }
+
+    private var combinedDueDate: Date? {
+        guard hasDueDate else { return nil }
+        if hasDueTime {
+            let cal = Calendar.current
+            let dateOnly = cal.dateComponents([.year, .month, .day], from: dueDate)
+            let timeOnly = cal.dateComponents([.hour, .minute], from: dueTime)
+            var combined = DateComponents()
+            combined.year = dateOnly.year
+            combined.month = dateOnly.month
+            combined.day = dateOnly.day
+            combined.hour = timeOnly.hour
+            combined.minute = timeOnly.minute
+            return cal.date(from: combined)
+        }
+        return dueDate
     }
 
     /// Other lists (excluding the currently selected one)
@@ -341,6 +392,13 @@ struct EditTaskFormView: View {
             if hasDueDate {
                 DatePicker("Due", selection: $dueDate, displayedComponents: .date)
                     .datePickerStyle(.compact)
+
+                Toggle("Set due time", isOn: $hasDueTime)
+
+                if hasDueTime {
+                    DatePicker("Time", selection: $dueTime, displayedComponents: .hourAndMinute)
+                        .datePickerStyle(.compact)
+                }
             }
 
             // Move to different list
@@ -386,7 +444,7 @@ struct EditTaskFormView: View {
                             taskId: task.id,
                             title: title,
                             notes: notes.isEmpty ? nil : notes,
-                            due: hasDueDate ? dueDate : nil
+                            due: combinedDueDate
                         )
                         isPresented = false
                     }

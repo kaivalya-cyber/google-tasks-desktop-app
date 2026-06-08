@@ -756,6 +756,44 @@ final class DataManager: ObservableObject {
         isLoading = false
     }
 
+    /// Exports all tasks as a Markdown string
+    func exportTasksAsMarkdown() -> String {
+        var md = "# Google Tasks\n\nExported: \(Date().formatted(date: .long, time: .shortened))\n\n"
+        for list in taskLists {
+            md += "## \(list.displayTitle)\n\n"
+            guard let tasks = tasksByListId[list.id] else {
+                md += "_No tasks_\n\n"
+                continue
+            }
+            for task in tasks where !task.isCompleted {
+                md += "- [ ] \(task.displayTitle)\n"
+                if let notes = task.notes, !notes.isEmpty {
+                    md += "  > \(notes.replacingOccurrences(of: "\n", with: "\n  > "))\n"
+                }
+                if let due = task.dueDate {
+                    md += "  📅 \(due.formatted(date: .abbreviated, time: .omitted))\n"
+                }
+                exportSubtasks(task.subtasks ?? [], into: &md, indent: "  ")
+            }
+            for task in tasks where task.isCompleted {
+                md += "- [x] \(task.displayTitle)\n"
+                exportSubtasks(task.subtasks ?? [], into: &md, indent: "  ")
+            }
+            md += "\n"
+        }
+        return md
+    }
+
+    private func exportSubtasks(_ subtasks: [GoogleTask], into md: inout String, indent: String) {
+        for subtask in subtasks {
+            let prefix = subtask.isCompleted ? "[x]" : "[ ]"
+            md += "\(indent)- \(prefix) \(subtask.displayTitle)\n"
+            if let subSubtasks = subtask.subtasks {
+                exportSubtasks(subSubtasks, into: &md, indent: indent + "  ")
+            }
+        }
+    }
+
     /// Signs in to Google. Loads cached data first, then refreshes from API.
     func signIn() async {
         isLoading = true

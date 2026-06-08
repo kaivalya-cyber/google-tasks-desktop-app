@@ -14,12 +14,17 @@ struct MenuView: View {
     @State private var showWeeklyReview = false
     @State private var compactMode = false
     @State private var showBatchMovePicker = false
+    @State private var quickCaptureText = ""
 
     var body: some View {
         VStack(spacing: 0) {
             headerView
 
-            Divider()
+            // Quick-capture field
+            if dataManager.authManager.isAuthenticated && dataManager.selectedTaskListId != nil {
+                quickCaptureBar
+                Divider()
+            }
 
             if !dataManager.authManager.isAuthenticated {
                 signInView
@@ -220,6 +225,17 @@ struct MenuView: View {
                 .help("Refresh")
                 .disabled(dataManager.isLoading)
 
+                // Export button
+                Button {
+                    exportTasks()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .help("Export tasks as Markdown")
+
                 Button {
                     openSettings()
                 } label: {
@@ -232,6 +248,44 @@ struct MenuView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    // MARK: - Quick Capture
+
+    private var quickCaptureBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "plus.circle")
+                .font(.system(size: 11))
+                .foregroundColor(.blue.opacity(0.6))
+            TextField("Quick capture — press Enter to add", text: $quickCaptureText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11))
+                .onSubmit {
+                    let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !text.isEmpty else { return }
+                    Task {
+                        _ = await dataManager.createTask(title: text)
+                    }
+                    quickCaptureText = ""
+                }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Export
+
+    private func exportTasks() {
+        let md = dataManager.exportTasksAsMarkdown()
+        let savePanel = NSSavePanel()
+        savePanel.title = "Export Tasks"
+        savePanel.nameFieldStringValue = "Google Tasks.md"
+        savePanel.allowedContentTypes = [.plainText]
+        savePanel.begin { response in
+            if response == .OK, let url = savePanel.url {
+                try? md.write(to: url, atomically: true, encoding: .utf8)
+            }
+        }
     }
 
     // MARK: - Sign In
