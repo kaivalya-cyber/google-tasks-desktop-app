@@ -43,8 +43,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
         // Don't reschedule if today's notification was already delivered
         let today = Calendar.current.startOfDay(for: Date())
+        let dayOfMonth = Calendar.current.component(.day, from: today)
+        let todayRequestID = "com.google.tasks.due-today-\(dayOfMonth)"
         let delivered = await center.deliveredNotifications()
-        let todayRequestID = "com.google.tasks.due-today"
         if delivered.contains(where: { $0.request.identifier == todayRequestID }) {
             return
         }
@@ -66,7 +67,6 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let content = UNMutableNotificationContent()
         content.sound = .default
 
-        let overdueCount = dueTasks.filter { $0.listName == "__overdue__" }.count
         if dueTasks.count == 1 {
             let task = dueTasks[0]
             content.title = "Task due today"
