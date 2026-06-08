@@ -165,8 +165,8 @@ final class GoogleTasksAPIService {
         return try await authenticatedRequest(urlString: urlString, method: "PATCH", body: cleanBody)
     }
 
-    /// Moves a task to a new position or parent
-    func moveTask(taskListId: String, taskId: String, parent: String? = nil, previous: String? = nil) async throws -> GoogleTask {
+    /// Moves a task to a new position, parent, or destination list
+    func moveTask(taskListId: String, taskId: String, parent: String? = nil, previous: String? = nil, destinationTaskListId: String? = nil) async throws -> GoogleTask {
         var components = URLComponents(string: "\(AppConstants.API.baseURL)/lists/\(taskListId)/tasks/\(taskId)/move")!
         var queryItems: [URLQueryItem] = []
         if let parent = parent {
@@ -174,6 +174,9 @@ final class GoogleTasksAPIService {
         }
         if let previous = previous {
             queryItems.append(URLQueryItem(name: "previous", value: previous))
+        }
+        if let destinationTaskListId = destinationTaskListId {
+            queryItems.append(URLQueryItem(name: "destinationTasklist", value: destinationTaskListId))
         }
         components.queryItems = queryItems
 

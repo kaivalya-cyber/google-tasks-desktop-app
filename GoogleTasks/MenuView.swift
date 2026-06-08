@@ -59,6 +59,9 @@ struct MenuView: View {
                 }
             }
         }
+        .onChange(of: dataManager.selectedTaskListId) { _ in
+            searchQuery = ""
+        }
     }
 
     // MARK: - Header

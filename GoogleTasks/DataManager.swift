@@ -465,6 +465,89 @@ final class DataManager: ObservableObject {
         isLoading = false
     }
 
+    // MARK: - Task Reordering
+
+    /// Moves a task up one position within its list
+    func moveTaskUp(taskId: String) async {
+        guard let listId = selectedTaskListId,
+              var tasks = tasksByListId[listId],
+              let index = tasks.firstIndex(where: { $0.id == taskId }),
+              index > 0 else { return }
+
+        let previous: String? = index > 1 ? tasks[index - 2].id : nil
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            _ = try await apiService.moveTask(taskListId: listId, taskId: taskId, previous: previous)
+            await loadTasks()
+        } catch {
+            if networkMonitor.isConnected {
+                errorMessage = error.localizedDescription
+            } else {
+                errorMessage = "Cannot reorder tasks while offline"
+            }
+        }
+
+        isLoading = false
+    }
+
+    /// Moves a task down one position within its list
+    func moveTaskDown(taskId: String) async {
+        guard let listId = selectedTaskListId,
+              var tasks = tasksByListId[listId],
+              let index = tasks.firstIndex(where: { $0.id == taskId }),
+              index < tasks.count - 1 else { return }
+
+        let previous = tasks[index + 1].id
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            _ = try await apiService.moveTask(taskListId: listId, taskId: taskId, previous: previous)
+            await loadTasks()
+        } catch {
+            if networkMonitor.isConnected {
+                errorMessage = error.localizedDescription
+            } else {
+                errorMessage = "Cannot reorder tasks while offline"
+            }
+        }
+
+        isLoading = false
+    }
+
+    /// Moves a task to a different task list
+    func moveTaskToList(taskId: String, toListId: String) async {
+        guard let fromListId = selectedTaskListId,
+              fromListId != toListId else { return }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            _ = try await apiService.moveTask(
+                taskListId: fromListId,
+                taskId: taskId,
+                destinationTaskListId: toListId
+            )
+            // Refresh both source and destination
+            await loadTasks(for: fromListId)
+            await loadTasks(for: toListId)
+            NotificationCenter.default.post(name: AppConstants.Notifications.tasksDidUpdate, object: nil)
+        } catch {
+            if networkMonitor.isConnected {
+                errorMessage = error.localizedDescription
+            } else {
+                errorMessage = "Cannot move tasks while offline"
+            }
+        }
+
+        isLoading = false
+    }
+
     // MARK: - Mutation Replay
 
     /// Replays all pending offline mutations against the live API

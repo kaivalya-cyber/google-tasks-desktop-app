@@ -56,6 +56,26 @@ struct TaskRowView: View {
                 if isHovering {
                     HStack(spacing: 4) {
                         Button {
+                            Task { await dataManager.moveTaskUp(taskId: task.id) }
+                        } label: {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.secondary)
+                        .help("Move up")
+
+                        Button {
+                            Task { await dataManager.moveTaskDown(taskId: task.id) }
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.secondary)
+                        .help("Move down")
+
+                        Button {
                             showEditSheet = true
                         } label: {
                             Image(systemName: "pencil")
@@ -218,6 +238,7 @@ struct EditTaskFormView: View {
     @State private var notes: String
     @State private var hasDueDate: Bool
     @State private var dueDate: Date
+    @State private var moveToListId: String? = nil
 
     init(isPresented: Binding<Bool>, task: GoogleTask) {
         self._isPresented = isPresented
@@ -226,6 +247,11 @@ struct EditTaskFormView: View {
         self._notes = State(initialValue: task.notes ?? "")
         self._hasDueDate = State(initialValue: task.dueDate != nil)
         self._dueDate = State(initialValue: task.dueDate ?? Date())
+    }
+
+    /// Other lists (excluding the currently selected one)
+    private var otherLists: [TaskList] {
+        dataManager.taskLists.filter { $0.id != dataManager.selectedTaskListId }
     }
 
     var body: some View {
@@ -249,6 +275,35 @@ struct EditTaskFormView: View {
             if hasDueDate {
                 DatePicker("Due", selection: $dueDate, displayedComponents: .date)
                     .datePickerStyle(.compact)
+            }
+
+            // Move to different list
+            if !otherLists.isEmpty {
+                Divider()
+
+                HStack {
+                    Picker("Move to list", selection: $moveToListId) {
+                        Text("Select list...").tag(nil as String?)
+                        ForEach(otherLists) { list in
+                            Text(list.displayTitle).tag(list.id as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .font(.system(size: 12))
+                    .labelsHidden()
+
+                    Button("Move") {
+                        if let toListId = moveToListId {
+                            Task {
+                                await dataManager.moveTaskToList(taskId: task.id, toListId: toListId)
+                                isPresented = false
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(moveToListId == nil)
+                }
             }
 
             HStack {
