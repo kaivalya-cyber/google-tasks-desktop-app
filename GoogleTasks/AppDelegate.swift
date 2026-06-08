@@ -267,6 +267,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func createMenuBarPanel() {
+        isCompactMode = false
+
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: AppConstants.MenuBar.width, height: AppConstants.MenuBar.height),
             styleMask: [.borderless, .fullSizeContentView],

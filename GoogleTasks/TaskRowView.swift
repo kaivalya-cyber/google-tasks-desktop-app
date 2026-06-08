@@ -287,8 +287,20 @@ struct NewTaskFormView: View {
             Toggle("Set due date", isOn: $hasDueDate)
 
             if hasDueDate {
-                DatePicker("Due", selection: $dueDate, displayedComponents: .date)
-                    .datePickerStyle(.compact)
+                HStack(spacing: 8) {
+                    TextField("tomorrow, next mon, in 3 days...", text: $naturalDateText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11))
+                        .onChange(of: naturalDateText) { text in
+                            if let parsed = parseNaturalDate(text) {
+                                dueDate = parsed
+                            }
+                        }
+
+                    DatePicker("", selection: $dueDate, displayedComponents: .date)
+                        .datePickerStyle(.field)
+                        .labelsHidden()
+                }
             }
 
             // Parent task picker for subtask creation
