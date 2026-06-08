@@ -470,7 +470,7 @@ final class DataManager: ObservableObject {
     /// Moves a task up one position within its list
     func moveTaskUp(taskId: String) async {
         guard let listId = selectedTaskListId,
-              var tasks = tasksByListId[listId],
+              let tasks = tasksByListId[listId],
               let index = tasks.firstIndex(where: { $0.id == taskId }),
               index > 0 else { return }
 
@@ -496,7 +496,7 @@ final class DataManager: ObservableObject {
     /// Moves a task down one position within its list
     func moveTaskDown(taskId: String) async {
         guard let listId = selectedTaskListId,
-              var tasks = tasksByListId[listId],
+              let tasks = tasksByListId[listId],
               let index = tasks.firstIndex(where: { $0.id == taskId }),
               index < tasks.count - 1 else { return }
 

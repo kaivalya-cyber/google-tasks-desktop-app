@@ -55,25 +55,28 @@ struct TaskRowView: View {
 
                 if isHovering {
                     HStack(spacing: 4) {
-                        Button {
-                            Task { await dataManager.moveTaskUp(taskId: task.id) }
-                        } label: {
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 9, weight: .medium))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundColor(.secondary)
-                        .help("Move up")
+                        // Reorder buttons (top-level tasks only)
+                        if task.parent == nil {
+                            Button {
+                                Task { await dataManager.moveTaskUp(taskId: task.id) }
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 9, weight: .medium))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(.secondary)
+                            .help("Move up")
 
-                        Button {
-                            Task { await dataManager.moveTaskDown(taskId: task.id) }
-                        } label: {
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 9, weight: .medium))
+                            Button {
+                                Task { await dataManager.moveTaskDown(taskId: task.id) }
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .medium))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(.secondary)
+                            .help("Move down")
                         }
-                        .buttonStyle(.plain)
-                        .foregroundColor(.secondary)
-                        .help("Move down")
 
                         Button {
                             showEditSheet = true
