@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Task Priority
 
@@ -18,12 +19,12 @@ enum TaskPriority: String, CaseIterable {
         }
     }
 
-    var color: String {
+    var color: Color {
         switch self {
-        case .none: return "secondary"
-        case .low: return "blue"
-        case .medium: return "orange"
-        case .high: return "red"
+        case .none: return .secondary
+        case .low: return .blue
+        case .medium: return .orange
+        case .high: return .red
         }
     }
 }
@@ -173,8 +174,11 @@ struct GoogleTask: Identifiable, Codable, Equatable {
     /// Strips priority prefix (!, !!, !!!) from the title for display
     var displayTitle: String {
         if title.hasPrefix("!!! ") { return String(title.dropFirst(4)) }
+        if title.hasPrefix("!!!") { return String(title.dropFirst(3)) }
         if title.hasPrefix("!! ") { return String(title.dropFirst(3)) }
+        if title.hasPrefix("!!") { return String(title.dropFirst(2)) }
         if title.hasPrefix("! ") { return String(title.dropFirst(2)) }
+        if title.hasPrefix("!") { return String(title.dropFirst(1)) }
         return title
     }
 

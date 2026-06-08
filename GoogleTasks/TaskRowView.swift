@@ -30,7 +30,7 @@ struct TaskRowView: View {
                     HStack(spacing: 3) {
                         if task.priority != .none {
                             Circle()
-                                .fill(priorityColor(task.priority))
+                                .fill(task.priority.color)
                                 .frame(width: 5, height: 5)
                         }
                         Text(task.displayTitle)
@@ -119,17 +119,20 @@ struct TaskRowView: View {
                     isHovering = hovering
                 }
             }
-            .onTapGesture {
-                if let event = NSApp.currentEvent, event.modifierFlags.contains(.command) {
-                    if selectedTaskIds.contains(task.id) {
-                        selectedTaskIds.remove(task.id)
-                    } else {
-                        selectedTaskIds.insert(task.id)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onEnded { _ in
+                        if let event = NSApp.currentEvent, event.modifierFlags.contains(.command) {
+                            if selectedTaskIds.contains(task.id) {
+                                selectedTaskIds.remove(task.id)
+                            } else {
+                                selectedTaskIds.insert(task.id)
+                            }
+                        } else {
+                            selectedTaskIds = [task.id]
+                        }
                     }
-                } else {
-                    selectedTaskIds = [task.id]
-                }
-            }
+            )
             .background(
                 isSelected ? Color.blue.opacity(0.08)
                     : isHovering ? Color.primary.opacity(0.04)
@@ -157,15 +160,6 @@ struct TaskRowView: View {
                 onDoubleClick?(task)
             }
         )
-    }
-
-    private func priorityColor(_ priority: TaskPriority) -> Color {
-        switch priority {
-        case .high: return .red
-        case .medium: return .orange
-        case .low: return .blue
-        case .none: return .secondary
-        }
     }
 
     private func formatDueDate(_ date: Date) -> String {
@@ -210,7 +204,7 @@ struct NewTaskFormView: View {
                         HStack(spacing: 3) {
                             if p != .none {
                                 Circle()
-                                    .fill(p.color == "blue" ? .blue : p.color == "orange" ? .orange : .red)
+                                    .fill(p.color)
                                     .frame(width: 6, height: 6)
                             }
                             Text(p.label)
