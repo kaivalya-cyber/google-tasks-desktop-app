@@ -195,12 +195,16 @@ final class DataManager: ObservableObject {
     /// Creates a new task, queuing the mutation if offline
     func createTask(title: String, notes: String? = nil, due: Date? = nil, parent: String? = nil) async -> GoogleTask? {
         guard let listId = selectedTaskListId else { return nil }
+        let listName = selectedTaskList?.displayTitle ?? ""
 
         isLoading = true
         errorMessage = nil
 
         do {
             let task = try await apiService.createTask(taskListId: listId, title: title, notes: notes, due: due, parent: parent)
+            if let due = due {
+                await notificationManager.scheduleTaskDueNotification(taskId: task.id, dueDate: due, title: task.title, listName: listName)
+            }
             await loadTasks()
             return task
         } catch {
@@ -255,12 +259,18 @@ final class DataManager: ObservableObject {
     /// Updates an existing task, queuing the mutation if offline
     func updateTask(taskId: String, title: String? = nil, notes: String? = nil, status: String? = nil, due: Date? = nil) async -> GoogleTask? {
         guard let listId = selectedTaskListId else { return nil }
+        let listName = selectedTaskList?.displayTitle ?? ""
 
         isLoading = true
         errorMessage = nil
 
         do {
             let task = try await apiService.updateTask(taskListId: listId, taskId: taskId, title: title, notes: notes, status: status, due: due)
+            // Cancel old notification and reschedule if due changed
+            notificationManager.cancelTaskNotification(taskId: taskId)
+            if let due = due {
+                await notificationManager.scheduleTaskDueNotification(taskId: taskId, dueDate: due, title: task.title, listName: listName)
+            }
             await loadTasks()
             return task
         } catch {
@@ -318,6 +328,12 @@ final class DataManager: ObservableObject {
         do {
             let newStatus = task.isCompleted ? "needsAction" : "completed"
             _ = try await apiService.updateTask(taskListId: listId, taskId: task.id, status: newStatus)
+            // Cancel notification if marking complete, or reschedule if uncompleting
+            if newStatus == "completed" {
+                notificationManager.cancelTaskNotification(taskId: task.id)
+            } else if let dueDate = task.dueDate, dueDate > Date() {
+                await notificationManager.scheduleTaskDueNotification(taskId: task.id, dueDate: dueDate, title: task.title, listName: selectedTaskList?.displayTitle ?? "")
+            }
             await loadTasks()
         } catch {
             if !networkMonitor.isConnected {
@@ -359,6 +375,7 @@ final class DataManager: ObservableObject {
 
         do {
             try await apiService.deleteTask(taskListId: listId, taskId: taskId)
+            notificationManager.cancelTaskNotification(taskId: taskId)
             await loadTasks()
         } catch {
             if !networkMonitor.isConnected {
@@ -754,6 +771,54 @@ final class DataManager: ObservableObject {
         await loadTasks(for: toListId)
         if failed > 0 { errorMessage = "\(failed) move(s) failed" }
         isLoading = false
+    }
+
+    /// Moves a task before another task within the same list (for drag-to-reorder)
+    func moveTaskBefore(taskId: String, beforeId: String) async {
+        guard let listId = selectedTaskListId,
+              let tasks = tasksByListId[listId] else { return }
+
+        // Find the task that should be "previous" to the moved task
+        guard let beforeIndex = tasks.firstIndex(where: { $0.id == beforeId }) else { return }
+        let previous = beforeIndex > 0 ? tasks[beforeIndex - 1].id : nil
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            _ = try await apiService.moveTask(taskListId: listId, taskId: taskId, previous: previous)
+            await loadTasks()
+        } catch {
+            if networkMonitor.isConnected {
+                errorMessage = error.localizedDescription
+            } else {
+                errorMessage = "Cannot reorder tasks while offline"
+            }
+        }
+
+        isLoading = false
+    }
+
+    /// Returns task counts (incomplete/total) for each list
+    var taskCountsByListId: [String: (incomplete: Int, total: Int)] {
+        var counts: [String: (incomplete: Int, total: Int)] = [:]
+        for (listId, tasks) in tasksByListId {
+            var incomplete = 0
+            var total = 0
+            countTasks(tasks, incomplete: &incomplete, total: &total)
+            counts[listId] = (incomplete, total)
+        }
+        return counts
+    }
+
+    private func countTasks(_ tasks: [GoogleTask], incomplete: inout Int, total: inout Int) {
+        for task in tasks {
+            total += 1
+            if !task.isCompleted { incomplete += 1 }
+            if let subtasks = task.subtasks {
+                countTasks(subtasks, incomplete: &incomplete, total: &total)
+            }
+        }
     }
 
     /// Exports all tasks as a Markdown string

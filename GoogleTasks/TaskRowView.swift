@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Task Row View
 
@@ -9,6 +10,7 @@ struct TaskRowView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var isHovering = false
     @State private var showEditSheet = false
+    @State private var isDropTarget = false
 
     private var isSelected: Bool {
         selectedTaskIds.contains(task.id)
@@ -68,29 +70,6 @@ struct TaskRowView: View {
 
                 if isHovering {
                     HStack(spacing: 4) {
-                        // Reorder buttons (top-level tasks only)
-                        if task.parent == nil {
-                            Button {
-                                Task { await dataManager.moveTaskUp(taskId: task.id) }
-                            } label: {
-                                Image(systemName: "chevron.up")
-                                    .font(.system(size: 9, weight: .medium))
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundColor(.secondary)
-                            .help("Move up")
-
-                            Button {
-                                Task { await dataManager.moveTaskDown(taskId: task.id) }
-                            } label: {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 9, weight: .medium))
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundColor(.secondary)
-                            .help("Move down")
-                        }
-
                         Button {
                             showEditSheet = true
                         } label: {
@@ -119,6 +98,16 @@ struct TaskRowView: View {
                     isHovering = hovering
                 }
             }
+            .onDrag {
+                NSItemProvider(object: task.id as NSString)
+            }
+            .onDrop(of: [.text], delegate: TaskRowDropDelegate(
+                taskId: task.id,
+                isTarget: $isDropTarget,
+                moveTask: { draggedId in
+                    Task { await dataManager.moveTaskBefore(taskId: draggedId, beforeId: task.id) }
+                }
+            ))
             .onTapGesture {
                 if let event = NSApp.currentEvent, event.modifierFlags.contains(.command) {
                     if selectedTaskIds.contains(task.id) {
@@ -131,7 +120,8 @@ struct TaskRowView: View {
                 }
             }
             .background(
-                isSelected ? Color.blue.opacity(0.08)
+                isDropTarget ? Color.blue.opacity(0.15)
+                    : isSelected ? Color.blue.opacity(0.08)
                     : isHovering ? Color.primary.opacity(0.04)
                     : Color.clear
             )
@@ -668,6 +658,45 @@ private func parseNaturalDate(_ text: String) -> Date? {
     }
 
     return nil
+}
+
+// MARK: - Task Row Drop Delegate
+
+struct TaskRowDropDelegate: DropDelegate {
+    let taskId: String
+    @Binding var isTarget: Bool
+    let moveTask: (String) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool {
+        // Accept drops from other task rows
+        return info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        isTarget = true
+    }
+
+    func dropExited(info: DropInfo) {
+        isTarget = false
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        isTarget = false
+
+        guard let itemProvider = info.itemProviders(for: [.text]).first else { return false }
+
+        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (item, error) in
+            guard let data = item as? Data,
+                  let draggedId = String(data: data, encoding: .utf8),
+                  draggedId != self.taskId else { return }
+
+            DispatchQueue.main.async {
+                moveTask(draggedId)
+            }
+        }
+
+        return true
+    }
 }
 
 // MARK: - Preview

@@ -99,6 +99,38 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// Schedules a notification for a single task at its exact due time
+    func scheduleTaskDueNotification(taskId: String, dueDate: Date, title: String, listName: String) async {
+        guard authorizationGranted else { return }
+
+        // Don't schedule if due date is in the past
+        guard dueDate > Date() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "\(title)"
+        content.body = "Due now — \(listName)"
+        content.sound = .default
+
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "task-due-\(taskId)",
+            content: content,
+            trigger: trigger
+        )
+
+        do {
+            try await center.add(request)
+        } catch {
+            print("[NotificationManager] Failed to schedule task notification: \(error.localizedDescription)")
+        }
+    }
+
+    /// Cancels a previously scheduled notification for a task
+    func cancelTaskNotification(taskId: String) {
+        center.removePendingNotificationRequests(withIdentifiers: ["task-due-\(taskId)"])
+    }
+
     // MARK: - Private Helpers
 
     /// Recursively collects incomplete tasks with due dates matching today or past-due

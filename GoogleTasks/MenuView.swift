@@ -384,6 +384,7 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 0) {
             List(selection: $dataManager.selectedTaskListId) {
                 ForEach(dataManager.taskLists) { list in
+                    let counts = dataManager.taskCountsByListId[list.id]
                     HStack(spacing: 8) {
                         Image(systemName: "list.bullet")
                             .font(.system(size: 11))
@@ -391,6 +392,14 @@ struct MenuView: View {
                         Text(list.displayTitle)
                             .font(.system(size: 12))
                             .lineLimit(1)
+                        Spacer()
+                        if let counts = counts, counts.total > 0 {
+                            Text(counts.incomplete == counts.total
+                                ? "\(counts.total)"
+                                : "\(counts.incomplete)/\(counts.total)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(counts.incomplete > 0 ? .blue.opacity(0.7) : .secondary.opacity(0.5))
+                        }
                     }
                     .padding(.vertical, 2)
                     .tag(list.id)
