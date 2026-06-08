@@ -266,10 +266,10 @@ struct MenuView: View {
         }
     }
 
-    /// Filtered tasks for search
+    /// Filtered tasks for search (searches all tasks including nested subtasks)
     private var filteredTasks: [GoogleTask] {
-        let tasks = dataManager.selectedListTasks
-        guard !searchQuery.isEmpty else { return tasks }
+        let tasks = dataManager.allTasksInSelectedList
+        guard !searchQuery.isEmpty else { return dataManager.selectedListTasks }
         return tasks.filter { $0.title.localizedCaseInsensitiveContains(searchQuery) }
     }
 

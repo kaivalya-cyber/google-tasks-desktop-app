@@ -166,7 +166,7 @@ struct NewTaskFormView: View {
             }
 
             // Parent task picker for subtask creation
-            let availableParents = dataManager.allTasksInSelectedList.filter { $0.id != parentTaskId }
+            let availableParents = dataManager.allTasksInSelectedList
             if !availableParents.isEmpty {
                 Picker("Parent task", selection: $parentTaskId) {
                     Text("None (top-level)").tag(nil as String?)
