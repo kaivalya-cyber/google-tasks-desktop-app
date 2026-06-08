@@ -36,6 +36,7 @@ enum AppConstants {
     // MARK: - Menu Bar Panel
     enum MenuBar {
         static let width: CGFloat = 380
+        static let compactWidth: CGFloat = 300
         static let height: CGFloat = 560
     }
 
@@ -56,5 +57,6 @@ enum AppConstants {
         static let newTaskShortcut = Notification.Name("newTaskShortcut")
         static let editSelectedTaskShortcut = Notification.Name("editSelectedTaskShortcut")
         static let deleteSelectedTaskShortcut = Notification.Name("deleteSelectedTaskShortcut")
+        static let toggleCompactMode = Notification.Name("toggleCompactMode")
     }
 }

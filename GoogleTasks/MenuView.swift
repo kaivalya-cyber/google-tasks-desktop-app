@@ -11,6 +11,8 @@ struct MenuView: View {
     @State private var showEditSheetForSelected = false
     @State private var detailTask: GoogleTask? = nil
     @State private var showTodayOnly = false
+    @State private var showWeeklyReview = false
+    @State private var compactMode = false
     @State private var showBatchMovePicker = false
 
     var body: some View {
@@ -28,8 +30,10 @@ struct MenuView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 0) {
-                        taskListSidebar
-                        Divider()
+                        if !compactMode {
+                            taskListSidebar
+                            Divider()
+                        }
                         taskContentView
                     }
                     .frame(minHeight: AppConstants.MenuBar.height - 100)
@@ -148,9 +152,33 @@ struct MenuView: View {
             Spacer()
 
             if dataManager.authManager.isAuthenticated {
+                // Weekly review toggle
+                Button {
+                    showWeeklyReview.toggle()
+                    if showWeeklyReview { showTodayOnly = false }
+                    selectedTaskIds = []
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: showWeeklyReview ? "chart.bar.fill" : "chart.bar")
+                            .font(.system(size: 10))
+                        Text("Review")
+                            .font(.system(size: 9, weight: showWeeklyReview ? .bold : .regular))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(showWeeklyReview ? Color.green.opacity(0.15) : Color.clear)
+                    )
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(showWeeklyReview ? .green : .secondary)
+                .help("Review tasks completed this week")
+
                 // Today toggle
                 Button {
                     showTodayOnly.toggle()
+                    if showTodayOnly { showWeeklyReview = false }
                     selectedTaskIds = []
                 } label: {
                     HStack(spacing: 3) {
@@ -169,6 +197,18 @@ struct MenuView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(showTodayOnly ? .blue : .secondary)
                 .help("Show only today's tasks across all lists")
+
+                // Compact mode toggle
+                Button {
+                    compactMode.toggle()
+                    NotificationCenter.default.post(name: AppConstants.Notifications.toggleCompactMode, object: nil)
+                } label: {
+                    Image(systemName: compactMode ? "rectangle.compress.vertical" : "rectangle.expand.vertical")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .help(compactMode ? "Expand panel" : "Compact panel")
 
                 Button {
                     Task { await dataManager.refreshAll() }
@@ -335,7 +375,9 @@ struct MenuView: View {
 
     private var taskContentView: some View {
         VStack(spacing: 0) {
-            if showTodayOnly {
+            if showWeeklyReview {
+                weeklyReviewView
+            } else if showTodayOnly {
                 todayTaskView
             } else if let selectedList = dataManager.selectedTaskList {
                 listTaskView(selectedList: selectedList)
@@ -346,6 +388,53 @@ struct MenuView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                     Spacer()
+                }
+            }
+        }
+    }
+
+    // MARK: - Weekly Review View
+
+    private var weeklyReviewView: some View {
+        let completedTasks = dataManager.allTasksCompletedThisWeek
+
+        return VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(.green)
+                Text("This Week")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text("\(completedTasks.count) done")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            if completedTasks.isEmpty {
+                VStack {
+                    Spacer()
+                    Image(systemName: "tray")
+                        .font(.system(size: 28))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("No tasks completed this week")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(completedTasks) { task in
+                            TaskRowView(task: task, selectedTaskIds: $selectedTaskIds, onDoubleClick: { detailTask = $0 })
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
             }
         }

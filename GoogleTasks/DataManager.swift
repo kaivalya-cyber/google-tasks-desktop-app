@@ -709,6 +709,31 @@ final class DataManager: ObservableObject {
         isLoading = false
     }
 
+    /// Returns all tasks completed in the past 7 days, across all lists
+    var allTasksCompletedThisWeek: [GoogleTask] {
+        var result: [GoogleTask] = []
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: today) else { return [] }
+        for (_, tasks) in tasksByListId {
+            for task in tasks {
+                collectCompletedThisWeek(task, weekAgo: weekAgo, into: &result)
+            }
+        }
+        return result.sorted { ($0.completed ?? "") > ($1.completed ?? "") }
+    }
+
+    private func collectCompletedThisWeek(_ task: GoogleTask, weekAgo: Date, into result: inout [GoogleTask]) {
+        if task.isCompleted, let completedDate = task.completedDate, completedDate >= weekAgo {
+            result.append(task)
+        }
+        if let subtasks = task.subtasks {
+            for subtask in subtasks {
+                collectCompletedThisWeek(subtask, weekAgo: weekAgo, into: &result)
+            }
+        }
+    }
+
     /// Batch-moves multiple tasks to another list
     func batchMoveTasks(taskIds: Set<String>, toListId: String) async {
         guard let fromListId = selectedTaskListId, fromListId != toListId else { return }

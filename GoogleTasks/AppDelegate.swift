@@ -55,6 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Keyboard shortcut
     private var hotKey: HotKey?
+    private var isCompactMode = false
 
     // MARK: - App Lifecycle
 
@@ -86,6 +87,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(handleCloseMenuBarPanel),
             name: AppConstants.Notifications.closeMenuBarPanel,
+            object: nil
+        )
+
+        // Listen for compact mode toggle
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleToggleCompactMode),
+            name: AppConstants.Notifications.toggleCompactMode,
             object: nil
         )
 
@@ -311,6 +320,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSWindow.didResignKeyNotification,
             object: panel
         )
+    }
+
+    @objc private func handleToggleCompactMode() {
+        isCompactMode.toggle()
+        guard let panel = menuBarPanel, let screen = panel.screen ?? NSScreen.main else { return }
+        let width = isCompactMode ? AppConstants.MenuBar.compactWidth : AppConstants.MenuBar.width
+        let newFrame = NSRect(
+            x: panel.frame.midX - width / 2,
+            y: panel.frame.origin.y,
+            width: width,
+            height: AppConstants.MenuBar.height
+        )
+        panel.setFrame(newFrame, display: true, animate: true)
     }
 
     @objc private func menuBarPanelDidResignKey(_ notification: Notification) {
