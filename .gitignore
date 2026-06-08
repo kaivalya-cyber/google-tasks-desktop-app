@@ -1,0 +1,22 @@
+# Xcode
+*.xcuserdata
+*.xcworkspace/xcuserdata
+DerivedData/
+build/
+
+# Swift Package Manager
+.build/
+Packages/
+
+# macOS
+.DS_Store
+*.app
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
