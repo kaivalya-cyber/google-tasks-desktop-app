@@ -465,6 +465,27 @@ final class DataManager: ObservableObject {
         isLoading = false
     }
 
+    /// Clears all completed tasks from the currently selected list
+    func clearCompletedTasks() async {
+        guard let listId = selectedTaskListId else { return }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            try await apiService.clearCompletedTasks(taskListId: listId)
+            await loadTasks()
+        } catch {
+            if networkMonitor.isConnected {
+                errorMessage = error.localizedDescription
+            } else {
+                errorMessage = "Cannot clear tasks while offline"
+            }
+        }
+
+        isLoading = false
+    }
+
     // MARK: - Task Reordering
 
     /// Moves a task up one position within its list

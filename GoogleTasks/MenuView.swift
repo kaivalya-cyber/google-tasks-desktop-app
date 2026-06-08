@@ -7,6 +7,9 @@ struct MenuView: View {
     @State private var showNewTaskForm = false
     @State private var showNewListForm = false
     @State private var searchQuery = ""
+    @State private var selectedTaskId: String? = nil
+    @State private var showEditSheetForSelected = false
+    @State private var detailTask: GoogleTask? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +55,17 @@ struct MenuView: View {
             NewListFormView(isPresented: $showNewListForm)
                 .environmentObject(dataManager)
         }
+        .sheet(isPresented: $showEditSheetForSelected) {
+            if let taskId = selectedTaskId,
+               let task = dataManager.allTasksInSelectedList.first(where: { $0.id == taskId }) {
+                EditTaskFormView(isPresented: $showEditSheetForSelected, task: task)
+                    .environmentObject(dataManager)
+            }
+        }
+        .popover(item: $detailTask) { task in
+            TaskDetailPopover(task: task)
+                .environmentObject(dataManager)
+        }
         .onAppear {
             Task {
                 if dataManager.authManager.isAuthenticated && dataManager.taskLists.isEmpty {
@@ -61,6 +75,23 @@ struct MenuView: View {
         }
         .onChange(of: dataManager.selectedTaskListId) { _ in
             searchQuery = ""
+            selectedTaskId = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppConstants.Notifications.newTaskShortcut)) { _ in
+            if dataManager.authManager.isAuthenticated && dataManager.selectedTaskListId != nil {
+                showNewTaskForm = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppConstants.Notifications.editSelectedTaskShortcut)) { _ in
+            if selectedTaskId != nil {
+                showEditSheetForSelected = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppConstants.Notifications.deleteSelectedTaskShortcut)) { _ in
+            if let taskId = selectedTaskId {
+                Task { await dataManager.deleteTask(taskId: taskId) }
+                selectedTaskId = nil
+            }
         }
     }
 
@@ -288,6 +319,20 @@ struct MenuView: View {
 
                     Spacer()
 
+                    // Clear completed button
+                    let completedCount = dataManager.selectedListTasks.filter { $0.isCompleted }.count
+                    if completedCount > 0 {
+                        Button {
+                            Task { await dataManager.clearCompletedTasks() }
+                        } label: {
+                            Text("Clear \(completedCount) done")
+                                .font(.system(size: 9))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.secondary)
+                        .help("Remove all completed tasks")
+                    }
+
                     Text("\(dataManager.selectedListTasks.count)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -341,7 +386,7 @@ struct MenuView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(filteredTasks) { task in
-                                TaskRowView(task: task)
+                                TaskRowView(task: task, selectedTaskId: $selectedTaskId, onDoubleClick: { detailTask = $0 })
                             }
                         }
                         .padding(.vertical, 4)

@@ -4,9 +4,15 @@ import SwiftUI
 
 struct TaskRowView: View {
     let task: GoogleTask
+    @Binding var selectedTaskId: String?
+    var onDoubleClick: ((GoogleTask) -> Void)? = nil
     @EnvironmentObject var dataManager: DataManager
     @State private var isHovering = false
     @State private var showEditSheet = false
+
+    private var isSelected: Bool {
+        selectedTaskId == task.id
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -106,8 +112,13 @@ struct TaskRowView: View {
                     isHovering = hovering
                 }
             }
+            .onTapGesture {
+                selectedTaskId = task.id
+            }
             .background(
-                isHovering ? Color.primary.opacity(0.04) : Color.clear
+                isSelected ? Color.blue.opacity(0.08)
+                    : isHovering ? Color.primary.opacity(0.04)
+                    : Color.clear
             )
             .sheet(isPresented: $showEditSheet) {
                 EditTaskFormView(isPresented: $showEditSheet, task: task)
@@ -117,7 +128,7 @@ struct TaskRowView: View {
             if let subtasks = task.subtasks, !subtasks.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(subtasks) { subtask in
-                        TaskRowView(task: subtask)
+                        TaskRowView(task: subtask, selectedTaskId: $selectedTaskId, onDoubleClick: onDoubleClick)
                             .padding(.leading, 20)
                     }
                 }
@@ -126,6 +137,11 @@ struct TaskRowView: View {
             Divider()
                 .padding(.leading, 32)
         }
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded {
+                onDoubleClick?(task)
+            }
+        )
     }
 
     private func formatDueDate(_ date: Date) -> String {
@@ -374,23 +390,149 @@ struct NewListFormView: View {
     }
 }
 
+// MARK: - Task Detail Popover
+
+struct TaskDetailPopover: View {
+    let task: GoogleTask
+    @EnvironmentObject var dataManager: DataManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16))
+                    .foregroundColor(task.isCompleted ? .green : .secondary)
+
+                Text(task.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .strikethrough(task.isCompleted)
+
+                Spacer()
+            }
+
+            if task.isCompleted {
+                Label("Completed", systemImage: "checkmark")
+                    .font(.system(size: 11))
+                    .foregroundColor(.green)
+            } else {
+                Label("Active", systemImage: "circle.dotted")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            if let dueDate = task.dueDate {
+                Divider()
+                HStack(spacing: 6) {
+                    Image(systemName: task.isOverdue ? "exclamationmark.triangle.fill" : "calendar")
+                        .font(.system(size: 10))
+                        .foregroundColor(task.isOverdue ? .red : .secondary)
+                    Text("Due: \(formattedDate(dueDate))")
+                        .font(.system(size: 11))
+                    if task.isOverdue && !task.isCompleted {
+                        Text("(Overdue)")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+
+            if let notes = task.notes, !notes.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Notes")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Text(notes)
+                        .font(.system(size: 11))
+                        .textSelection(.enabled)
+                }
+            }
+
+            if let subtasks = task.subtasks, !subtasks.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Subtasks (\(subtasks.count))")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    ForEach(subtasks) { subtask in
+                        HStack(spacing: 6) {
+                            Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 9))
+                                .foregroundColor(subtask.isCompleted ? .green : .secondary.opacity(0.5))
+                            Text(subtask.title)
+                                .font(.system(size: 11))
+                                .strikethrough(subtask.isCompleted)
+                                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
+                        }
+                    }
+                }
+            }
+
+            if let links = task.links, !links.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Links")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    ForEach(links, id: \.link) { link in
+                        HStack(spacing: 4) {
+                            Image(systemName: "link")
+                                .font(.system(size: 9))
+                            Text(link.description ?? link.link)
+                                .font(.system(size: 11))
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(.blue)
+                        .onTapGesture {
+                            if let url = URL(string: link.link) {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding()
+        .frame(width: 280, height: 320)
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        if Calendar.current.isDateInToday(date) {
+            return "Today"
+        } else if Calendar.current.isDateInTomorrow(date) {
+            return "Tomorrow"
+        } else if Calendar.current.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            formatter.dateFormat = "EEE, MMM d, yyyy"
+            return formatter.string(from: date)
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
-    TaskRowView(task: GoogleTask(
-        id: "1",
-        title: "Sample Task",
-        updated: nil,
-        selfLink: nil,
-        parent: nil,
-        position: "1",
-        notes: "Some notes",
-        status: "needsAction",
-        due: "2026-06-10T00:00:00Z",
-        completed: nil,
-        deleted: nil,
-        hidden: nil
-    ))
+    TaskRowView(
+        task: GoogleTask(
+            id: "1",
+            title: "Sample Task",
+            updated: nil,
+            selfLink: nil,
+            parent: nil,
+            position: "1",
+            notes: "Some notes",
+            status: "needsAction",
+            due: "2026-06-10T00:00:00Z",
+            completed: nil,
+            deleted: nil,
+            hidden: nil
+        ),
+        selectedTaskId: .constant(nil)
+    )
     .environmentObject(DataManager.shared)
     .frame(width: 300)
     .padding()

@@ -14,11 +14,28 @@ class KeyablePanel: NSPanel {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 {
-            cancelOperation(nil)
-        } else {
-            super.keyDown(with: event)
+        // Only handle keys without modifiers (except shift for uppercase)
+        let modifierFlags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            .subtracting(.shift)
+        if modifierFlags.isEmpty {
+            switch event.keyCode {
+            case 53: // Escape
+                cancelOperation(nil)
+                return
+            case 45: // N key — new task
+                NotificationCenter.default.post(name: AppConstants.Notifications.newTaskShortcut, object: nil)
+                return
+            case 36, 76: // Enter / Return — edit selected
+                NotificationCenter.default.post(name: AppConstants.Notifications.editSelectedTaskShortcut, object: nil)
+                return
+            case 51, 117: // Delete / Forward Delete — delete selected
+                NotificationCenter.default.post(name: AppConstants.Notifications.deleteSelectedTaskShortcut, object: nil)
+                return
+            default:
+                break
+            }
         }
+        super.keyDown(with: event)
     }
 }
 
