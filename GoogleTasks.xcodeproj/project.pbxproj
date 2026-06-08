@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		HOTKEY0012EFC000000000001 /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = HOTKEY0012EFC000000000000 /* HotKey */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				HOTKEY0012EFC000000000001 /* HotKey in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,6 +84,7 @@
 			);
 			name = GoogleTasks;
 			packageProductDependencies = (
+				HOTKEY0012EFC000000000000 /* HotKey */,
 			);
 			productName = GoogleTasks;
 			productReference = A2476F1F2DA770E800C94D8B /* GoogleTasks.app */;
@@ -112,6 +115,7 @@
 			mainGroup = A2476F162DA770E800C94D8B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				HOTKEY0012EFC000000000002 /* XCRemoteSwiftPackageReference "HotKey" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A2476F202DA770E800C94D8B /* Products */;
@@ -344,6 +348,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		HOTKEY0012EFC000000000002 /* XCRemoteSwiftPackageReference "HotKey" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/soffes/HotKey";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		HOTKEY0012EFC000000000000 /* HotKey */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = HOTKEY0012EFC000000000002 /* XCRemoteSwiftPackageReference "HotKey" */;
+			productName = HotKey;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A2476F172DA770E800C94D8B /* Project object */;
 }

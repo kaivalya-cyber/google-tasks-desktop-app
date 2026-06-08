@@ -9,9 +9,13 @@ let package = Package(
     products: [
         .executable(name: "GoogleTasks", targets: ["GoogleTasks"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/soffes/HotKey", branch: "main")
+    ],
     targets: [
         .executableTarget(
             name: "GoogleTasks",
+            dependencies: ["HotKey"],
             path: "GoogleTasks",
             resources: [
                 .process("Info.plist")

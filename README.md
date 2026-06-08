@@ -241,7 +241,8 @@ google-tasks-desktop-app/
 
 | Action | Shortcut |
 |--------|----------|
-| Toggle tasks panel | Click menu bar icon |
+| Toggle tasks panel | **Ctrl+Opt+T** (global, works from any app) |
+| Open panel from menu bar | Click menu bar icon |
 | Context menu | Right-click menu bar icon |
 | Close panel | Esc |
 
